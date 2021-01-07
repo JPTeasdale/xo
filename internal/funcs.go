@@ -22,6 +22,7 @@ func (a *ArgType) NewTemplateFuncs() template.FuncMap {
 		"colvals":            a.colvals,
 		"colvalsmulti":       a.colvalsmulti,
 		"fieldnames":         a.fieldnames,
+		"fieldnameslist":     a.fieldnameslist,
 		"fieldnamesmulti":    a.fieldnamesmulti,
 		"goparamlist":        a.goparamlist,
 		"reniltype":          a.reniltype,
@@ -365,20 +366,37 @@ func (a *ArgType) colvalsmulti(fields []*Field, ignoreNames []*Field) string {
 	return str
 }
 
+// fieldnames returns an iterable list of field names from fields, excluding any Field with Name contained in ignoreNames.
+//
+// Used to access the field names directly, ie for structured logging or metrics:
+// (ie, log.Printf("%s: %v", "Field1", t.Field1)
+func (a *ArgType) fieldnameslist(fields []*Field, ignoreNames ...string) []string {
+	ignore := map[string]bool{}
+	for _, n := range ignoreNames {
+		ignore[n] = true
+	}
+
+	names := make([]string, 0)
+	for _, f := range fields {
+		if ignore[f.Name] {
+			continue
+		}
+
+		names := append(names, f)
+	}
+
+	return names
+}
+
 // fieldnames creates a list of field names from fields of the adding the
 // provided prefix, and excluding any Field with Name contained in ignoreNames.
 //
 // Used to present a comma separated list of field names, ie in a Go statement
 // (ie, "t.Field1, t.Field2, t.Field3 ...")
 func (a *ArgType) fieldnames(fields []*Field, prefix string, ignoreNames ...string) string {
-	ignore := map[string]bool{}
-	for _, n := range ignoreNames {
-		ignore[n] = true
-	}
-
 	str := ""
 	i := 0
-	for _, f := range fields {
+	for _, f := range a.fieldnameslist(fields, ignoreNames...) {
 		if ignore[f.Name] {
 			continue
 		}
